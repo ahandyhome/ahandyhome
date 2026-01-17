@@ -1,26 +1,346 @@
-/**
- * Loyalty Discount Tiers Configuration
- *
- * This object defines the discount percentage for each loyalty tier,
- * represented as a decimal value (e.g., 0.25 for 25%).
- */
-const DISCOUNT_TIERS = {
-    // Requested change: Diamond discount set to 25%
-    Diamond: 0.25,
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Work Order Portal | Your Hometowne Handyman LLC</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@500&display=swap');
+        
+        :root {
+            --brand-blue: #3b82f6;
+            --bg-deep: #020617;
+            --panel-bg: #0f172a;
+        }
 
-    // Requested change: Platinum discount set to 35%
-    Platinum: 0.35,
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: var(--bg-deep); 
+            color: #f8fafc;
+        }
 
-    // Example of other common tiers for completeness
-    Gold: 0.15,
-    Silver: 0.10,
-    Bronze: 0.05,
-};
+        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #020617; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
 
-// If this were an actual module, you would typically export it:
-// export default DISCOUNT_TIERS;
+        .service-card {
+            transition: all 0.15s ease;
+            border: 1px solid #1e293b;
+            background: #0f172a;
+        }
+        .service-card:hover {
+            border-color: var(--brand-blue);
+            background: #1e293b;
+            transform: translateY(-1px);
+        }
 
-// Example of how to access the new values:
-// console.log("Diamond Discount:", DISCOUNT_TIERS.Diamond * 100 + "%");
-// console.log("Platinum Discount:", DISCOUNT_TIERS.Platinum * 100 + "%");
+        @media print {
+            .no-print { display: none !important; }
+            body { background: white; color: black; }
+            .print-container { 
+                box-shadow: none !important; 
+                border: 1px solid #000 !important; 
+                margin: 0 !important; 
+                width: 100% !important;
+                background: white !important;
+                color: black !important;
+            }
+            .text-white, .text-slate-200, .text-blue-400 { color: black !important; }
+            .bg-slate-900, .bg-slate-950 { background: #eee !important; border-bottom: 2px solid #000 !important; }
+            .monospaced { color: black !important; }
+        }
+
+        .monospaced { font-family: 'JetBrains Mono', monospace; }
+    </style>
+</head>
+<body class="min-h-screen">
+
+    <!-- Header -->
+    <nav class="no-print border-b border-slate-800 bg-slate-950/80 sticky top-0 z-50 backdrop-blur-md">
+        <div class="max-w-[1600px] mx-auto px-6 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-blue-600 rounded flex items-center justify-center font-black text-white text-xl italic shadow-lg shadow-blue-900/20">H</div>
+                <div class="leading-tight">
+                    <span class="block font-black text-lg tracking-tight uppercase">Your Hometowne Handyman <span class="text-blue-500 italic">LLC</span></span>
+                    <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Easley, SC • (821) 888-7726</span>
+                </div>
+            </div>
+            <div class="flex items-center gap-4">
+                <button onclick="window.print()" class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded font-bold text-xs uppercase tracking-widest transition shadow-lg shadow-blue-900/40">Export Work Order</button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-[1600px] mx-auto p-4 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Left: Service Selector -->
+        <div class="lg:col-span-7 no-print flex flex-col gap-4">
+            
+            <!-- Controls -->
+            <div class="bg-slate-900/50 p-4 rounded-xl border border-slate-800 grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="space-y-1">
+                    <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Property Name / Address</label>
+                    <input type="text" id="propName" oninput="update()" class="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm outline-none focus:border-blue-500" placeholder="e.g. 402 Mountain View Dr">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest">STR Membership Tier</label>
+                    <select id="tier" onchange="update()" class="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm text-blue-400 font-bold outline-none focus:border-blue-500">
+                        <option value="1">Standard Rates</option>
+                        <option value="0.95">Bronze Tier (-5%)</option>
+                        <option value="0.90">Silver Tier (-10%)</option>
+                        <option value="0.85">Gold Tier (-15%)</option>
+                        <option value="0.80">Diamond Tier (-20%)</option>
+                    </select>
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Filter 200+ Services</label>
+                    <input type="text" id="search" oninput="filter()" class="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm outline-none focus:border-blue-500" placeholder="Type to search...">
+                </div>
+            </div>
+
+            <!-- Catalog -->
+            <div id="catalog" class="h-[70vh] overflow-y-auto pr-2 custom-scrollbar space-y-8 pb-10">
+                <!-- Groups injected here -->
+            </div>
+        </div>
+
+        <!-- Right: Work Order Preview -->
+        <div class="lg:col-span-5 relative">
+            <div id="invoice" class="print-container bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden flex flex-col min-h-[850px] shadow-2xl sticky top-24">
+                
+                <!-- Branding Header -->
+                <div class="bg-slate-950 p-6 border-b-2 border-slate-800">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h2 class="text-2xl font-black text-white tracking-tighter italic">Your Hometowne Handyman <span class="text-blue-500">LLC</span></h2>
+                            <div class="mt-2 text-[10px] font-bold text-slate-500 uppercase tracking-[0.1em] space-y-0.5">
+                                <p>Easley, South Carolina</p>
+                                <p>(821) 888-7726 • schandyman4u@gmail.com</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-1">Status</p>
+                            <p class="text-xs font-black bg-blue-500/10 text-blue-400 px-3 py-1 rounded border border-blue-500/20 uppercase">STR Work Order</p>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-8 flex justify-between items-end border-t border-slate-800 pt-6">
+                        <div>
+                            <p class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Service Location</p>
+                            <p id="outProp" class="text-xl font-extrabold text-white tracking-tight">PENDING SELECTION</p>
+                        </div>
+                        <div class="text-right">
+                            <p id="outDate" class="text-xs font-bold text-slate-400"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Line Items Table -->
+                <div class="p-6 flex-grow">
+                    <table class="w-full text-xs">
+                        <thead>
+                            <tr class="text-slate-500 font-black uppercase tracking-widest border-b border-slate-800">
+                                <th class="text-left pb-4">Scope of Work</th>
+                                <th class="text-right pb-4 px-4">Market Rate</th>
+                                <th class="text-right pb-4">Net</th>
+                            </tr>
+                        </thead>
+                        <tbody id="lines" class="divide-y divide-slate-800">
+                            <!-- Injected -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Footer Summary -->
+                <div class="p-6 bg-slate-950 border-t-2 border-slate-800">
+                    <div class="space-y-3">
+                        <div class="flex justify-between text-xs font-bold text-slate-500">
+                            <span>Market Value Subtotal</span>
+                            <span id="outMarket">$0.00</span>
+                        </div>
+                        <div class="flex justify-between text-xs font-bold text-emerald-500">
+                            <span>Partner Membership Discount</span>
+                            <span id="outDisc">-$0.00</span>
+                        </div>
+                        <div class="flex justify-between items-center pt-4 border-t border-slate-800">
+                            <div class="leading-none">
+                                <p class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Final Estimated Total</p>
+                                <p id="outTotal" class="text-4xl font-black text-white monospaced tracking-tighter">$0.00</p>
+                            </div>
+                            <div class="no-print">
+                                <button onclick="clearAll()" class="text-[10px] font-black text-red-500 uppercase hover:text-red-400 transition">Clear Draft</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const services = {
+            "⚡ ELECTRICAL & SMART HOME": [
+                { n: "Smart Lock Installation (August/Yale/Schlage)", p: 145 },
+                { n: "Ring/Nest Floodlight/Camera Hardwire", p: 185 },
+                { n: "Ceiling Fan (Standard Assembly & Install)", p: 215 },
+                { n: "Smart Thermostat (Nest/Ecobee) Configuration", p: 155 },
+                { n: "GFCI Circuit Safety Upgrade", p: 115 },
+                { n: "USB Receptacle Multi-Point Conversion", p: 85 },
+                { n: "Dimmer Switch / Smart Switch Retrofit", p: 95 },
+                { n: "Smoke/CO2 Integrated Detector Install", p: 95 },
+                { n: "TV Power Relocation (In-Wall Hide)", p: 225 },
+                { n: "Bathroom Exhaust Fan Replacement", p: 195 },
+                { n: "Recessed Lighting Trim / LED Refresh", p: 75 },
+                { n: "Landscape Lighting Transformer Repair", p: 175 },
+                { n: "Pendant Lighting (Kitchen/Island/Bar)", p: 165 },
+                { n: "Hardwired Doorbell Transformer Repair", p: 135 },
+                { n: "Pool/Spa Mechanical Timer Maintenance", p: 225 }
+            ],
+            "💧 PLUMBING & MECHANICAL": [
+                { n: "Kitchen Faucet Professional Install", p: 215 },
+                { n: "Garbage Disposal (1/2 HP Stainless Swap)", p: 225 },
+                { n: "Toilet Internal Component Rebuild", p: 155 },
+                { n: "Toilet Wax Ring & Precision Re-Seating", p: 195 },
+                { n: "Shower Valve Cartridge Replacement", p: 165 },
+                { n: "Bathtub/Shower Perimeter Re-Caulk", p: 145 },
+                { n: "Drain Mechanical Snaking (Heavy Clog)", p: 165 },
+                { n: "Supply Line / Angle Stop Replacement", p: 115 },
+                { n: "Dishwasher High-Loop Safety Setup", p: 125 },
+                { n: "Refrigerator Water Line (Stainless) Install", p: 165 },
+                { n: "Vanity Basin Professional Caulking", p: 95 },
+                { n: "Exterior Frost-Free Hose Bib Repair", p: 145 },
+                { n: "Washing Machine Flood-Safe Hose Upgrade", p: 115 },
+                { n: "Sump Pump Performance & Valve Test", p: 115 },
+                { n: "Bidet System (BioBidet/Attachment) Install", p: 125 }
+            ],
+            "🔨 INTERIOR FINISH & STR PREP": [
+                { n: "Drywall Reconstruction & Texture Match", p: 245 },
+                { n: "TV Wall Mounting (Large Format 75+)", p: 225 },
+                { n: "Furniture Assembly (Executive/Complex)", p: 275 },
+                { n: "LVP Flooring Plank Spot Restoration", p: 185 },
+                { n: "Door Slab Trim / Shave & Re-hang", p: 125 },
+                { n: "Cabinet Hinge Soft-Close Retrofit", p: 145 },
+                { n: "Baseboard/Crown Molding Section Repair", p: 165 },
+                { n: "Professional Blind/Shade Installation", p: 95 },
+                { n: "Heavy Mirror / Gallery Wall Anchor", p: 135 },
+                { n: "Door Knob / Deadbolt Uniform Keying", p: 85 },
+                { n: "Sliding Barn Door Track System Build", p: 325 },
+                { n: "Kitchen Kickplate / Trim Re-attachment", p: 85 },
+                { n: "Closet Organizer Custom Assembly", p: 350 },
+                { n: "Handrail Safety Bolt Tensioning", p: 110 },
+                { n: "Cabinet Hardware Drilling & Install", p: 125 }
+            ],
+            "🏘️ EXTERIOR & STR CURB APPEAL": [
+                { n: "High-Reach Gutter Clearing (2-Story)", p: 275 },
+                { n: "Pressure Wash Entryway & Hardscape", p: 215 },
+                { n: "Fence Gate Alignment & Sag Mitigation", p: 135 },
+                { n: "Mailbox Post (Concrete Anchor Base)", p: 225 },
+                { n: "Deck Board / Railing Section Repair", p: 185 },
+                { n: "Exterior Door Weatherstrip (Premium)", p: 115 },
+                { n: "Premium Grill Deep Clean & Degrease", p: 195 },
+                { n: "Window Screen Professional Re-mesh", p: 85 },
+                { n: "Outdoor Furniture Set Assembly", p: 175 },
+                { n: "Trampoline / Outdoor Equipment Build", p: 295 },
+                { n: "Outdoor Smart Camera (Solar/Hardwire)", p: 125 },
+                { n: "Porch Swing / Hammock Safe Anchor", p: 145 },
+                { n: "House Number / Signage (Backlit)", p: 115 },
+                { n: "Vinyl Siding Spot Pressure Cleaning", p: 195 },
+                { n: "Holiday Lighting (Installation/Removal)", p: 350 }
+            ]
+        };
+
+        let activeWorkOrder = [];
+        const tripFee = 125.00;
+
+        function init() {
+            renderCatalog();
+            document.getElementById('outDate').innerText = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+            update();
+        }
+
+        function renderCatalog() {
+            const container = document.getElementById('catalog');
+            container.innerHTML = '';
+            
+            Object.keys(services).forEach(cat => {
+                const sec = document.createElement('div');
+                sec.innerHTML = `
+                    <div class="flex items-center gap-4 mb-4">
+                        <h3 class="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] whitespace-nowrap">${cat}</h3>
+                        <div class="h-px bg-slate-800 w-full"></div>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
+                        ${services[cat].map(s => `
+                            <div onclick="add('${s.n}', ${s.p})" class="service-card p-3 rounded-lg cursor-pointer group">
+                                <div class="flex justify-between items-start gap-3">
+                                    <span class="text-[11px] font-bold text-slate-300 leading-tight group-hover:text-white transition">${s.n}</span>
+                                    <span class="text-[10px] font-black text-slate-500 monospaced">$${s.p}</span>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+                container.appendChild(sec);
+            });
+        }
+
+        function add(n, p) { activeWorkOrder.push({ n, p }); update(); }
+        function remove(idx) { activeWorkOrder.splice(idx, 1); update(); }
+        function clearAll() { activeWorkOrder = []; update(); }
+
+        function update() {
+            const tierVal = parseFloat(document.getElementById('tier').value);
+            document.getElementById('outProp').innerText = document.getElementById('propName').value.toUpperCase() || "PENDING SELECTION";
+            
+            const lines = document.getElementById('lines');
+            lines.innerHTML = '';
+            
+            let marketSum = tripFee;
+            let netSum = tripFee;
+
+            // Trip Fee Row
+            const trFee = document.createElement('tr');
+            trFee.className = "hover:bg-slate-800/30 transition";
+            trFee.innerHTML = `
+                <td class="py-4 font-bold text-slate-300">Professional Service Mobilization & Equipment Fee</td>
+                <td class="text-right py-4 px-4 monospaced text-slate-500">$${tripFee.toFixed(2)}</td>
+                <td class="text-right py-4 monospaced font-bold text-blue-400">$${tripFee.toFixed(2)}</td>
+            `;
+            lines.appendChild(trFee);
+
+            activeWorkOrder.forEach((item, idx) => {
+                const netPrice = item.p * tierVal;
+                marketSum += item.p;
+                netSum += netPrice;
+                
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-800/30 transition group";
+                tr.innerHTML = `
+                    <td class="py-4">
+                        <p class="font-bold text-slate-200">${item.n}</p>
+                        <button onclick="remove(${idx})" class="no-print text-[8px] font-black text-red-500 uppercase tracking-widest opacity-0 group-hover:opacity-100 transition mt-1">Remove Item</button>
+                    </td>
+                    <td class="text-right py-4 px-4 monospaced text-slate-500">$${item.p.toFixed(2)}</td>
+                    <td class="text-right py-4 monospaced font-bold text-blue-400">$${netPrice.toFixed(2)}</td>
+                `;
+                lines.appendChild(tr);
+            });
+
+            document.getElementById('outMarket').innerText = `$${marketSum.toFixed(2)}`;
+            document.getElementById('outDisc').innerText = `-$${(marketSum - netSum).toFixed(2)}`;
+            document.getElementById('outTotal').innerText = `$${netSum.toFixed(2)}`;
+        }
+
+        function filter() {
+            const q = document.getElementById('search').value.toLowerCase();
+            document.querySelectorAll('.service-card').forEach(card => {
+                card.style.display = card.innerText.toLowerCase().includes(q) ? 'block' : 'none';
+            });
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
 
