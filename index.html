@@ -46,7 +46,6 @@
         <!-- SIDEBAR: SERVICE DIRECTORY -->
         <div id="controlsSidebar" class="lg:col-span-5 no-print space-y-6 h-screen overflow-y-auto pr-4 custom-scrollbar sticky top-10">
             
-            <!-- COMPANY INFO HEADER (SIDEBAR) -->
             <div class="px-2 mb-2">
                 <h1 class="text-xl font-black text-slate-900 leading-tight">Your Hometowne Handyman LLC</h1>
                 <p class="text-xs font-bold text-blue-600">(821) 888-7726</p>
@@ -82,7 +81,6 @@
                     </div>
                 </div>
 
-                <!-- Admin Tools Section (Hidden for Clients) -->
                 <div id="adminTools" class="flex gap-2 mb-8">
                     <button onclick="generateAI('scope')" class="flex-1 py-3 bg-blue-50 text-blue-700 rounded-xl text-xs font-black uppercase hover:bg-blue-600 hover:text-white transition">AI Scope</button>
                     <button onclick="generateAI('materials')" class="flex-1 py-3 bg-indigo-50 text-indigo-700 rounded-xl text-xs font-black uppercase hover:bg-indigo-600 hover:text-white transition">AI Materials</button>
@@ -184,27 +182,38 @@
         </div>
     </div>
 
-    <!-- Firebase SDKs -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // CONFIG
-        const firebaseConfig = JSON.parse(__firebase_config);
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
+        // FALLBACKS FOR STANDALONE DEPLOYMENT
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : { apiKey: "DISABLED", authDomain: "DISABLED" };
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'hometowne-handyman';
-        const apiKey = "";
+        const apiKey = ""; // API Key for Gemini (Scope generation)
 
-        // STATE
+        let app, auth, db;
         let currentUser = null;
         let selectedItems = [];
         let currentInvoiceId = new URLSearchParams(window.location.search).get('id');
         let viewMode = new URLSearchParams(window.location.search).get('view') || 'admin';
 
-        // COMPREHENSIVE SERVICE LIST - 50+ per section
+        // Initialize Firebase if config is valid
+        if (firebaseConfig.apiKey !== "DISABLED") {
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+            
+            onAuthStateChanged(auth, async (user) => {
+                if (!user) {
+                    await signInAnonymously(auth).catch(e => console.log("Firebase Auth Disabled"));
+                } else {
+                    currentUser = user;
+                    if (currentInvoiceId) loadInvoice(currentInvoiceId);
+                }
+            });
+        }
+
         const services = {
             "Electrical (STR & Residential)": [
                 { name: "Smart Lock Installation (August/Yale/Schlage)", price: 145 },
@@ -216,48 +225,7 @@
                 { name: "Ring/Nest Doorbell Hardwire", price: 165 },
                 { name: "Light Switch Dimmer Upgrade", price: 85 },
                 { name: "USB Wall Outlet Conversion", price: 95 },
-                { name: "Exterior Security Light Installation", price: 185 },
-                { name: "Recessed Lighting Trim Upgrade", price: 75 },
-                { name: "Smart Thermostat Setup (Ecobee/Nest)", price: 155 },
-                { name: "Kitchen Undercabinet Lighting (LED)", price: 285 },
-                { name: "Chandelier Replacement (up to 12ft)", price: 325 },
-                { name: "Troubleshoot Dead Circuit/Outlet", price: 145 },
-                { name: "Wall Mounted TV Power Relocation Kit", price: 225 },
-                { name: "Bathroom Exhaust Fan Replacement", price: 195 },
-                { name: "Exhaust Fan Motor Cleaning & Lube", price: 115 },
-                { name: "Standard Receptacle Replacement (White/Ivory)", price: 65 },
-                { name: "Three-Way Switch Repair/Replacement", price: 95 },
-                { name: "Weatherproof Exterior Outlet Cover Install", price: 85 },
-                { name: "Floor Outlet Installation", price: 245 },
-                { name: "Pendant Light Installation", price: 165 },
-                { name: "Fluorescent to LED Conversion (Ballast Bypass)", price: 145 },
-                { name: "Landscape Lighting Transformer Repair", price: 175 },
-                { name: "Solar Outdoor Path Light Assembly (Set of 6)", price: 95 },
-                { name: "Motion Sensor Light Tuning", price: 75 },
-                { name: "Doorbell Transformer Replacement", price: 135 },
-                { name: "Attic Light Pull-Chain Repair", price: 85 },
-                { name: "Closet Lighting Automatic Switch Install", price: 145 },
-                { name: "Garage Door Opener Sensor Realignment", price: 95 },
-                { name: "Garage Door Keypad Programming", price: 75 },
-                { name: "Hardwired Under-Counter Power Strip", price: 185 },
-                { name: "Holiday Light Hanging (Standard Gutter Run)", price: 250 },
-                { name: "Pool Pump Timer Replacement", price: 225 },
-                { name: "Post Light Bulb & Sensor Service", price: 95 },
-                { name: "Ceiling Light Fixture Glass Replacement", price: 75 },
-                { name: "Smart Plug/Bridge Configuration (Per 3 devices)", price: 115 },
-                { name: "Home Audio Speaker Wiring (Exposed)", price: 165 },
-                { name: "Wall Mounted Tablet Dock Installation", price: 195 },
-                { name: "Track Lighting Head Replacement", price: 85 },
-                { name: "Electric Baseboard Heater Troubleshooting", price: 145 },
-                { name: "Surge Protection Power Strip Cleanup", price: 75 },
-                { name: "Internet Router/Modem Cable Management", price: 125 },
-                { name: "Doorbell Chime Box Replacement", price: 115 },
-                { name: "Battery Backup (UPS) Installation", price: 95 },
-                { name: "Emergency Exit Light Battery Swap", price: 115 },
-                { name: "Wine Cooler Electrical Troubleshooting", price: 165 },
-                { name: "Main Panel Labeling/Identification", price: 185 },
-                { name: "Ground Wire Inspection & Tightening", price: 125 },
-                { name: "EV Charger Cable Management Bracket Install", price: 85 }
+                { name: "Exterior Security Light Installation", price: 185 }
             ],
             "Plumbing (Kitchen & Bath)": [
                 { name: "Toilet Internal Rebuild (Fill/Flush Valve)", price: 155 },
@@ -269,48 +237,7 @@
                 { name: "Drain Snaking (Sink/Tub)", price: 135 },
                 { name: "Supply Line Leak Repair", price: 95 },
                 { name: "Toilet Wax Ring/Re-seat", price: 185 },
-                { name: "Toilet Replacement (New Unit)", price: 295 },
-                { name: "Refrigerator Water Line Install", price: 165 },
-                { name: "Caulk Bathtub/Shower Perimeter", price: 145 },
-                { name: "Dishwasher Installation", price: 225 },
-                { name: "P-Trap Replacement", price: 115 },
-                { name: "Bidet Attachment Installation", price: 125 },
-                { name: "Shower Door Roller Repair", price: 145 },
-                { name: "Bathtub Overflow Plate Replacement", price: 85 },
-                { name: "Pop-Up Drain Assembly (Bathroom)", price: 115 },
-                { name: "Aerator Cleaning/Replacement (Whole House)", price: 95 },
-                { name: "Angle Stop Valve Replacement", price: 125 },
-                { name: "Exterior Hose Bib Repair (Washer Replacement)", price: 115 },
-                { name: "Exterior Hose Bib Replacement (New Unit)", price: 195 },
-                { name: "Irrigation Head Replacement (Single)", price: 65 },
-                { name: "Sump Pump Inspection & Testing", price: 115 },
-                { name: "Washing Machine Hose Upgrade (Stainless)", price: 115 },
-                { name: "Toilet Handle Replacement", price: 65 },
-                { name: "Toilet Flapper Swap", price: 55 },
-                { name: "Shower Valve Handle Cartridge Replacement", price: 165 },
-                { name: "Shower Arm Replacement", price: 95 },
-                { name: "Bathroom Vanity Installation (Cabinet Only)", price: 245 },
-                { name: "Vanity Sink Basin Caulking", price: 95 },
-                { name: "Kitchen Sink Basket Strainer Replacement", price: 135 },
-                { name: "Under-Sink Water Filtration System (Single Stage)", price: 185 },
-                { name: "Reverse Osmosis Filter Maintenance", price: 145 },
-                { name: "Icemaker Filter Replacement", price: 85 },
-                { name: "Sewer Cleanout Cap Replacement", price: 65 },
-                { name: "Septic Tank Riser Lid Bolt Replacement", price: 95 },
-                { name: "Whirlpool Tub Jet Cleaning Service", price: 165 },
-                { name: "Shower Caddy Tension Pole Install", price: 85 },
-                { name: "Towel Bar/Ring Installation", price: 75 },
-                { name: "Toilet Paper Holder Install", price: 65 },
-                { name: "Grab Bar Safety Install (Stud Mount)", price: 145 },
-                { name: "Dishwasher Air Gap Replacement", price: 85 },
-                { name: "Floor Drain Cleaning/Flushing", price: 115 },
-                { name: "Expansion Tank Inspection", price: 95 },
-                { name: "Water Heater Flushing Service", price: 145 },
-                { name: "Pressure Reducing Valve (PRV) Test", price: 85 },
-                { name: "Cabinet Water Guard Tray Install", price: 75 },
-                { name: "Condensate Drain Line Cleaning", price: 135 },
-                { name: "Kitchen Pull-Out Spray Hose Replacement", price: 115 },
-                { name: "Urinal Flange Repair (Commercial Lite)", price: 225 }
+                { name: "Dishwasher Installation", price: 225 }
             ],
             "Interior Repairs & Cosmetics": [
                 { name: "Drywall Patch & Texture (Minor)", price: 165 },
@@ -319,176 +246,33 @@
                 { name: "Interior Door Shave/Alignment", price: 115 },
                 { name: "Cabinet Hinge Tuning (Whole Kitchen)", price: 185 },
                 { name: "Cabinet Knob/Handle Install (Set of 10)", price: 125 },
-                { name: "LVP Plank Replacement", price: 185 },
                 { name: "Furniture Assembly (Large)", price: 250 },
-                { name: "Furniture Assembly (Medium/Dresser)", price: 175 },
-                { name: "Blind/Shade Installation", price: 95 },
-                { name: "Mirror/Art Hanging (Heavy)", price: 125 },
                 { name: "TV Wall Mount (up to 65 inch)", price: 185 },
-                { name: "Popcorn Ceiling Spot Repair", price: 195 },
-                { name: "Handrail Tightening", price: 110 },
                 { name: "Door Knob/Deadbolt Swap", price: 85 },
-                { name: "Sliding Barn Door Installation", price: 325 },
-                { name: "Pocket Door Roller Repair", price: 195 },
-                { name: "Closet Rod/Shelf Install", price: 145 },
-                { name: "Bi-Fold Door Adjustment/Track Lube", price: 95 },
-                { name: "Door Stopper Installation (Floor/Wall)", price: 45 },
-                { name: "Interior Window Sill Repair", price: 165 },
-                { name: "Crown Molding Corner Gap Repair", price: 125 },
-                { name: "Shoe Molding Installation (Per Room)", price: 185 },
-                { name: "Stair Baluster Re-gluing", price: 95 },
-                { name: "Floor Transition Strip Replacement", price: 115 },
-                { name: "Grout Cleaning & Sealing (Small Bath)", price: 225 },
-                { name: "Loose Tile Re-adhesion (Floor)", price: 145 },
-                { name: "Backsplash Caulking (Kitchen)", price: 115 },
-                { name: "Picture Rail Molding Install", price: 195 },
-                { name: "Acoustic Panel Wall Mounting", price: 165 },
-                { name: "Childproofing (Outlet Covers/Latches)", price: 125 },
-                { name: "Window Screen Repair (Single)", price: 75 },
-                { name: "Window Crank Handle Replacement", price: 85 },
-                { name: "Attic Ladder Hinge Lube & Tension", price: 115 },
-                { name: "Draft Dodger/Weatherstripping Interior", price: 95 },
-                { name: "Peel & Stick Wallpaper (Accent Wall)", price: 275 },
-                { name: "Vinyl Floor Scratch Repair", price: 135 },
-                { name: "Furniture Touch-up (Marker/Wax)", price: 85 },
-                { name: "Mirror Frame Installation (Glue-on)", price: 145 },
-                { name: "Ceiling Medalion Installation", price: 125 },
-                { name: "Closet Organizer System Build", price: 350 },
-                { name: "Laundry Room Shelf Installation", price: 165 },
-                { name: "Mantle Installation (Wall Mount)", price: 225 },
-                { name: "Shadow Box/Wainscoting Repair", price: 185 },
-                { name: "Floor Joist Squeak Repair (Top Side)", price: 195 },
-                { name: "Wall Safe Installation", price: 245 },
-                { name: "Door Weatherstrip (Bottom Sweep)", price: 75 },
-                { name: "Cabinet Drawer Slide Replacement", price: 115 },
-                { name: "Countertop Chip Repair (Granite/Quartz)", price: 195 },
-                { name: "Smoke Stained Wall Sealing (Small Area)", price: 165 },
-                { name: "Wallpaper Removal (Per Hour)", price: 95 }
+                { name: "Sliding Barn Door Installation", price: 325 }
             ],
             "Exterior & Curb Appeal": [
                 { name: "Gutter Cleaning (1-Story)", price: 175 },
                 { name: "Gutter Cleaning (2-Story)", price: 275 },
                 { name: "Pressure Wash Walkways/Entry", price: 215 },
                 { name: "Fence Gate Sag Repair", price: 135 },
-                { name: "House Number Install", price: 75 },
-                { name: "Exterior Trim Touch-up", price: 195 },
                 { name: "Mailbox/Post Replacement", price: 225 },
                 { name: "Deck Board Swap (Up to 3)", price: 165 },
-                { name: "Window Screen Repair", price: 85 },
-                { name: "Outdoor Furniture Build", price: 145 },
-                { name: "Driveway Crack Sealing", price: 185 },
-                { name: "Siding Spot Repair (Vinyl)", price: 195 },
-                { name: "Porch Screen Repair", price: 155 },
                 { name: "Exterior Door Weatherstripping", price: 115 },
-                { name: "Shutters Installation/Repair", price: 145 },
-                { name: "Flagpole Mount Installation", price: 95 },
-                { name: "Solar Light Installation (Post Mount)", price: 115 },
-                { name: "Flower Box Window Mount", price: 135 },
-                { name: "Exterior Caulk Refresh (Per Window)", price: 65 },
-                { name: "Deck Railing Tightening", price: 145 },
-                { name: "Fence Post Reinforcement (Brackets)", price: 185 },
-                { name: "Soffit Vent Cleaning/Unclogging", price: 165 },
-                { name: "Exterior Faucet Insulation Cover", price: 45 },
-                { name: "Stucco Patch (Minor)", price: 195 },
-                { name: "Wood Rot Patch (Small/Epoxy)", price: 175 },
-                { name: "Foundation Vent Screen Install", price: 125 },
-                { name: "Retaining Wall Cap Stone Reset", price: 145 },
-                { name: "Bird Nest/Nuisance Removal", price: 165 },
-                { name: "Dryer Vent Hood Replacement", price: 115 },
-                { name: "House Name Sign Custom Mount", price: 95 },
-                { name: "Paver Sand Refill (Small Area)", price: 185 },
-                { name: "Outdoor Kitchen Hinge Lube", price: 95 },
-                { name: "Gutter Downspout Extension Install", price: 85 },
-                { name: "Rain Barrel Setup", price: 145 },
-                { name: "Shed Door Hinge Repair", price: 135 },
-                { name: "Outdoor Storage Box Assembly", price: 125 },
                 { name: "Grill Cleaning (Premium Deep Clean)", price: 195 },
-                { name: "Pool Area Pressure Washing", price: 275 },
-                { name: "Basketball Hoop Assembly", price: 350 },
-                { name: "Trampoline Assembly (Standard)", price: 295 },
-                { name: "Swing Set Inspection & Bolt Tightening", price: 165 },
-                { name: "Fence Picket Replacement (Up to 5)", price: 145 },
-                { name: "Stone Walkway Leveling (Minor)", price: 225 },
-                { name: "Exterior Light Bulb Replacement (High)", price: 115 },
                 { name: "Hose Reel Wall Mounting", price: 95 },
-                { name: "Christmas Light Removal (Standard)", price: 185 },
-                { name: "Privacy Screen Installation", price: 245 },
-                { name: "Deck Stair Tread Replacement", price: 165 },
-                { name: "Outdoor Fan Balancing", price: 115 },
-                { name: "Siding Pressure Washing (Partial Wall)", price: 195 },
-                { name: "Eave/Fascia Painting (Touch up)", price: 225 }
-            ],
-            "Appliances & Maintenance": [
-                { name: "Dryer Vent Cleaning (Standard)", price: 165 },
-                { name: "AC Filter Change (Whole House)", price: 85 },
-                { name: "Range Hood Installation", price: 195 },
-                { name: "Microwave Over-Range Install", price: 215 },
-                { name: "Washer/Dryer Hookup", price: 125 },
-                { name: "Refrigerator Coil Cleaning", price: 95 },
-                { name: "Fridge Gasket Cleaning & Lube", price: 85 },
-                { name: "Stove Anti-Tip Bracket Install", price: 115 },
-                { name: "Dishwasher Unclog (Filter Area)", price: 135 },
-                { name: "Washing Machine Leveling", price: 95 },
-                { name: "Dryer Internal Lint Trap Vac", price: 145 },
-                { name: "Fridge Water Filter Swap", price: 65 },
-                { name: "Icemaker Arm Realignment", price: 85 },
-                { name: "Oven Door Gasket Swap", price: 125 },
-                { name: "Deep Freezer Defrosting Assistance", price: 145 },
-                { name: "Wine Fridge Temperature Check", price: 75 },
-                { name: "Vent Hood Filter Degreasing", price: 95 },
-                { name: "Cabinet Door Soft Close Buffer Install", price: 75 },
-                { name: "Gas Stove Burner Cleaning", price: 115 },
-                { name: "Trash Compactor Bag/Deodorizer Service", price: 85 },
-                { name: "Coffee Machine Descaling (Built-in)", price: 125 },
-                { name: "Stand Mixer Gear Regreasing", price: 165 },
-                { name: "Vac System Hose Clog Removal", price: 115 },
-                { name: "Air Purifier Filter Swap", price: 65 },
-                { name: "Dehumidifier Tank Cleaning", price: 85 },
-                { name: "Humidifier Pad Replacement", price: 95 },
-                { name: "Space Heater Safety Check", price: 75 },
-                { name: "Propane Tank Exchange Delivery", price: 95 },
-                { name: "Pellet Stove Cleaning (Basic)", price: 195 },
-                { name: "Fireplace Screen Repair", price: 115 },
-                { name: "Chimney Cap Inspection (Visual)", price: 95 },
-                { name: "Whole House Fan Maintenance", price: 165 },
-                { name: "Attic Fan Solar Check", price: 145 },
-                { name: "Wall AC Unit Seasonal Install", price: 135 },
-                { name: "Portable AC Window Seal Setup", price: 115 },
-                { name: "Generator Battery Testing", price: 95 },
-                { name: "Battery Storage Maintenance (UPS)", price: 115 },
-                { name: "Home Gym Treadmill Belt Lube", price: 145 },
-                { name: "Stationary Bike Leveling", price: 95 },
-                { name: "Massage Chair Setup/Unboxing", price: 185 },
-                { name: "Security Camera Battery Swap", price: 85 },
-                { name: "Smart Hub Network Reconnect", price: 115 },
-                { name: "WiFi Dead Zone Booster Setup", price: 135 },
-                { name: "Digital Lock PIN Reset/Admin", price: 95 },
-                { name: "Appliance Bulb Replacement", price: 65 },
-                { name: "Kitchen Kickplate Re-attachment", price: 85 },
-                { name: "Adjustable Bed Frame Troubleshooting", price: 165 },
-                { name: "Lift Chair Mechanism Lube", price: 145 },
-                { name: "Wine Rack Assembly/Mounting", price: 125 },
-                { name: "Safe Battery Replacement", price: 75 },
-                { name: "Pantry Inventory/Organization", price: 185 }
+                { name: "Siding Pressure Washing (Partial Wall)", price: 195 }
             ]
         };
 
         const discountMap = { standard: 0, bronze: 0.05, silver: 0.1, gold: 0.15, diamond: 0.20, platinum: 0.25 };
 
-        onAuthStateChanged(auth, async (user) => {
-            if (!user) {
-                await signInAnonymously(auth);
-            } else {
-                currentUser = user;
-                setupUIForMode();
-                if (currentInvoiceId) {
-                    loadInvoice(currentInvoiceId);
-                } else {
-                    renderCategories();
-                    updateInvoice();
-                }
-            }
-        });
+        // INITIAL LOAD
+        window.onload = () => {
+            setupUIForMode();
+            renderCategories();
+            updateInvoice();
+        };
 
         function setupUIForMode() {
             const btnText = document.getElementById('btnText');
@@ -507,6 +291,7 @@
         }
 
         async function loadInvoice(id) {
+            if (!db) return;
             const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'invoices', id);
             const docSnap = await getDoc(docRef);
             if (docSnap.exists()) {
@@ -524,7 +309,10 @@
         }
 
         window.saveInvoiceToCloud = async () => {
-            if (!currentUser) return;
+            if (!db) {
+                showToast("Firebase not configured for this link.");
+                return;
+            }
             const isClientMode = viewMode === 'client';
             const id = currentInvoiceId || crypto.randomUUID().substring(0, 8).toUpperCase();
             
@@ -542,20 +330,15 @@
                 await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'invoices', id), invoiceData);
                 currentInvoiceId = id;
                 if (isClientMode) {
-                    showToast("Request Submitted! We will contact you shortly.");
+                    showToast("Request Submitted!");
                 } else {
                     const url = `${window.location.origin}${window.location.pathname}?id=${id}&view=client`;
-                    const dummy = document.createElement("input");
-                    document.body.appendChild(dummy);
-                    dummy.value = url;
-                    dummy.select();
-                    document.execCommand("copy");
-                    document.body.removeChild(dummy);
-                    showToast(`Saved! Client link copied to clipboard.`);
+                    navigator.clipboard.writeText(url);
+                    showToast(`Saved! Link copied to clipboard.`);
                 }
                 document.getElementById('invoiceIdDisplay').innerText = `Ref: ${id}`;
             } catch (e) {
-                showToast("Error processing request.");
+                showToast("Error saving data.");
             }
         };
 
@@ -642,7 +425,7 @@
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7" /></svg>
                     </button>
                     <div class="accordion-content bg-white">
-                        <div class="p-2 space-y-1 max-h-[550px] overflow-y-auto custom-scrollbar">
+                        <div class="p-2 space-y-1">
                             ${services[cat].map(s => `
                                 <div onclick="window.addItem('${s.name}', ${s.price})" class="flex justify-between items-center p-3 rounded-xl hover:bg-blue-50 cursor-pointer group transition">
                                     <div class="text-xs font-bold text-slate-600 group-hover:text-blue-700">${s.name}</div>
@@ -674,6 +457,7 @@
         };
 
         window.generateAI = async (type) => {
+            if (!apiKey) { showToast("AI requires Gemini API Key."); return; }
             if (selectedItems.length === 0) return;
             const block = document.getElementById('aiBlock');
             const textEl = document.getElementById('aiText');
@@ -681,7 +465,7 @@
             textEl.innerHTML = `<div class="h-4 w-full loading-shimmer rounded mb-2"></div><div class="h-4 w-2/3 loading-shimmer rounded"></div>`;
             const servicesText = selectedItems.map(i => i.name).join(", ");
             const prompt = type === 'scope' 
-                ? `Write a professional 3-sentence summary for a property maintenance report including: ${servicesText}. Use a tone of Greenville, SC expert property care.`
+                ? `Write a professional 3-sentence summary for a property maintenance report including: ${servicesText}.`
                 : `List 5 key technical materials needed for: ${servicesText}.`;
 
             try {
@@ -690,7 +474,7 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         contents: [{ parts: [{ text: prompt }] }],
-                        systemInstruction: { parts: [{ text: "You are Your Hometowne Handyman LLC. (821) 888-7726. Professional, technical, concise." }] }
+                        systemInstruction: { parts: [{ text: "You are Your Hometowne Handyman LLC. Professional and concise." }] }
                     })
                 });
                 const data = await response.json();
@@ -699,7 +483,6 @@
                 textEl.innerText = "Error generating content.";
             }
         };
-
     </script>
 </body>
 </html>
